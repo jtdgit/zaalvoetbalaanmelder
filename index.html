@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voetbal Aanmelder</title>
+  <link rel="stylesheet" href="css/aanmelder.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>⚽</text></svg>">
+</head>
+<body>
+
+  <!-- Login / Register overlay -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <span class="login-card__icon">⚽</span>
+      <h1 class="login-card__title">Voetbal Aanmelder</h1>
+
+      <!-- Tab switch -->
+      <div class="auth-tabs" id="authTabs">
+        <button type="button" class="auth-tabs__btn auth-tabs__btn--active" data-tab="login">Inloggen</button>
+        <button type="button" class="auth-tabs__btn" data-tab="register">Registreren</button>
+      </div>
+
+      <!-- Login form -->
+      <form class="login-card__form" id="loginForm" autocomplete="off">
+        <input type="email" class="login-card__input" id="loginEmail" placeholder="E-mailadres" required>
+        <input type="password" class="login-card__input" id="loginWachtwoord" placeholder="Wachtwoord" required minlength="4">
+        <p class="login-card__error" id="loginError"></p>
+        <button type="submit" class="btn btn--primary login-card__btn">Inloggen →</button>
+        <button type="button" class="login-card__link" id="forgotPasswordBtn">Wachtwoord vergeten?</button>
+      </form>
+
+      <!-- Register form -->
+      <form class="login-card__form login-card__form--hidden" id="registerForm" autocomplete="off">
+        <input type="text" class="login-card__input" id="regNaam" placeholder="Je naam" required maxlength="40">
+        <input type="email" class="login-card__input" id="regEmail" placeholder="E-mailadres" required>
+        <input type="password" class="login-card__input" id="regWachtwoord" placeholder="Wachtwoord (min. 4 tekens)" required minlength="4">
+        <input type="password" class="login-card__input" id="regWachtwoord2" placeholder="Wachtwoord bevestigen" required minlength="4">
+        <p class="login-card__error" id="registerError"></p>
+        <button type="submit" class="btn btn--primary login-card__btn">Account aanmaken →</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Profile modal -->
+  <div class="modal-overlay modal-overlay--hidden" id="profileOverlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">Mijn profiel</h2>
+        <button type="button" class="modal__close" id="profileClose">✕</button>
+      </div>
+      <form class="modal__form" id="profileForm" autocomplete="off">
+        <div class="form-group">
+          <label for="profNaam">Naam</label>
+          <input type="text" id="profNaam" required maxlength="40">
+        </div>
+        <div class="form-group">
+          <label for="profEmail">E-mailadres</label>
+          <input type="email" id="profEmail" required>
+        </div>
+        <p class="login-card__error" id="profileError"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Opslaan</button>
+        </div>
+      </form>
+      <hr class="modal__divider">
+      <h3 class="modal__subtitle">Wachtwoord wijzigen</h3>
+      <form class="modal__form" id="passwordForm" autocomplete="off">
+        <div class="form-group">
+          <label for="profOudWw">Huidig wachtwoord</label>
+          <input type="password" id="profOudWw" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label for="profNieuwWw">Nieuw wachtwoord</label>
+          <input type="password" id="profNieuwWw" required minlength="4">
+        </div>
+        <p class="login-card__error" id="passwordError"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Wachtwoord wijzigen</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Email simulatie modal (popup i.p.v. echte mail) -->
+  <div class="modal-overlay modal-overlay--hidden" id="emailSimOverlay">
+    <div class="modal email-sim">
+      <div class="email-sim__header">
+        <span class="email-sim__icon">📧</span>
+        <div>
+          <p class="email-sim__from">Van: noreply@voetbalaanmelder.nl</p>
+          <p class="email-sim__to">Aan: <span id="emailSimTo"></span></p>
+          <p class="email-sim__subject">Onderwerp: <strong id="emailSimSubject"></strong></p>
+        </div>
+      </div>
+      <hr class="modal__divider">
+      <div class="email-sim__body" id="emailSimBody"></div>
+      <div class="form-actions">
+        <button type="button" class="btn btn--primary" id="emailSimClose">Sluiten</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verificatie modal -->
+  <div class="modal-overlay modal-overlay--hidden" id="verifyOverlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">E-mail verifiëren</h2>
+      </div>
+      <p class="verify__hint">Voer de 6-cijferige code in die je per "e-mail" hebt ontvangen.</p>
+      <form class="modal__form" id="verifyForm" autocomplete="off">
+        <input type="text" class="login-card__input verify__code-input" id="verifyCode" placeholder="000000" required maxlength="6" pattern="\d{6}" inputmode="numeric">
+        <p class="login-card__error" id="verifyError"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Verifiëren</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Wachtwoord vergeten modal -->
+  <div class="modal-overlay modal-overlay--hidden" id="forgotOverlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">Wachtwoord vergeten</h2>
+        <button type="button" class="modal__close" id="forgotClose">✕</button>
+      </div>
+      <div id="forgotStep1">
+        <p class="verify__hint">Voer je e-mailadres in. Je ontvangt een code om je wachtwoord te resetten.</p>
+        <form class="modal__form" id="forgotForm" autocomplete="off">
+          <input type="email" class="login-card__input" id="forgotEmail" placeholder="E-mailadres" required>
+          <p class="login-card__error" id="forgotError"></p>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Verstuur resetcode</button>
+          </div>
+        </form>
+      </div>
+      <div id="forgotStep2" style="display:none">
+        <p class="verify__hint">Voer de resetcode en je nieuwe wachtwoord in.</p>
+        <form class="modal__form" id="resetForm" autocomplete="off">
+          <input type="text" class="login-card__input verify__code-input" id="resetCode" placeholder="Resetcode (6 cijfers)" required maxlength="6" pattern="\d{6}" inputmode="numeric">
+          <input type="password" class="login-card__input" id="resetNieuwWw" placeholder="Nieuw wachtwoord (min. 4 tekens)" required minlength="4">
+          <input type="password" class="login-card__input" id="resetNieuwWw2" placeholder="Bevestig nieuw wachtwoord" required minlength="4">
+          <p class="login-card__error" id="resetError"></p>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Wachtwoord opslaan</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__brand">
+        <span class="header__icon">⚽</span>
+        <div>
+          <h1 class="header__title">Voetbal Aanmelder</h1>
+          <p class="header__subtitle">Meld je aan voor de wedstrijden</p>
+        </div>
+      </div>
+      <div class="header__stats" id="headerStats">
+        <div class="header__stat">
+          <span class="header__stat-value" id="statWedstrijden">0</span>
+          <span class="header__stat-label">Wedstrijden</span>
+        </div>
+        <div class="header__stat">
+          <span class="header__stat-value" id="statSpelers">0</span>
+          <span class="header__stat-label">Aanmeldingen</span>
+        </div>
+        <div class="player-badge" id="playerBadge">
+          <button class="player-badge__profile" id="profileBtn" title="Mijn profiel">
+            <span class="player-badge__avatar" id="playerAvatar"></span>
+            <span class="player-badge__name" id="playerName"></span>
+          </button>
+          <button class="player-badge__logout" id="logoutBtn" title="Uitloggen">✕</button>
+        </div>
+        <button class="darkmode-toggle" id="darkToggle" title="Wissel licht/donker thema">
+          <span id="darkIcon">🌙</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Add match panel -->
+    <section class="add-panel" id="addPanel">
+      <button type="button" class="add-panel__toggle" id="addToggle">
+        <span class="add-panel__toggle-icon">+</span>
+        Wedstrijd toevoegen
+      </button>
+      <div class="add-panel__body">
+        <form class="add-panel__form" id="addForm" autocomplete="off">
+          <div class="form-group">
+            <label for="fTegenstander">Tegenstander</label>
+            <input type="text" id="fTegenstander" placeholder="bijv. FC Groningen" required maxlength="60">
+          </div>
+          <div class="form-group">
+            <label for="fDatum">Datum</label>
+            <input type="date" id="fDatum" required>
+          </div>
+          <div class="form-group">
+            <label for="fTijdstip">Aftrap</label>
+            <input type="time" id="fTijdstip" value="14:30">
+          </div>
+          <div class="form-group">
+            <label for="fLocatie">Locatie</label>
+            <input type="text" id="fLocatie" placeholder="bijv. Sportpark De Toekomst" maxlength="80">
+          </div>
+          <div class="form-group">
+            <label for="fThuisUit">Thuis / Uit</label>
+            <select id="fThuisUit">
+              <option value="thuis">Thuis</option>
+              <option value="uit">Uit</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">
+              ⚽ Toevoegen
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Match cards container -->
+    <section class="matches" id="matchesContainer">
+      <!-- Dynamisch gevuld door aanmelder.js -->
+    </section>
+
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Voetbal Aanmelder &mdash; Data wordt lokaal opgeslagen in je browser.<br>
+    Gesponsord door <a href="https://www.facta.nl/" target="_blank" rel="noopener" style="color: var(--pitch-light); text-decoration: none; font-weight: 600;">Facta</a>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/aanmelder.js"></script>
+</body>
+</html>
