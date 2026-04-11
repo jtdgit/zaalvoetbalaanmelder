@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Voetbal Aanmelder</title>
+  <link rel="stylesheet" href="css/aanmelder.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📊</text></svg>">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__brand">
+        <span class="header__icon">📊</span>
+        <div>
+          <h1 class="header__title">Dashboard</h1>
+          <p class="header__subtitle">Overzicht wedstrijden &amp; spelers</p>
+        </div>
+      </div>
+      <div class="header__stats">
+        <nav class="nav-tabs">
+          <a href="index.html" class="nav-tabs__link">⚽ Aanmelder</a>
+          <a href="dashboard.html" class="nav-tabs__link nav-tabs__link--active">📊 Dashboard</a>
+        </nav>
+        <button class="darkmode-toggle" id="darkToggle" title="Wissel licht/donker thema">
+          <span id="darkIcon">🌙</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Tab switch -->
+    <div class="dash-tabs" id="dashTabs">
+      <button type="button" class="dash-tabs__btn dash-tabs__btn--active" data-view="wedstrijden">Wedstrijden</button>
+      <button type="button" class="dash-tabs__btn" data-view="spelers">Speler statistieken</button>
+    </div>
+
+    <!-- Summary cards -->
+    <section class="summary" id="summary">
+      <div class="summary__card">
+        <span class="summary__value" id="sumWedstrijden">0</span>
+        <span class="summary__label">Wedstrijden</span>
+      </div>
+      <div class="summary__card summary__card--green">
+        <span class="summary__value" id="sumAanwezig">0</span>
+        <span class="summary__label">Aanwezig</span>
+      </div>
+      <div class="summary__card summary__card--yellow">
+        <span class="summary__value" id="sumMisschien">0</span>
+        <span class="summary__label">Misschien</span>
+      </div>
+      <div class="summary__card summary__card--red">
+        <span class="summary__value" id="sumAfwezig">0</span>
+        <span class="summary__label">Afwezig</span>
+      </div>
+    </section>
+
+    <!-- Wedstrijden view -->
+    <section class="dash-view" id="viewWedstrijden">
+      <div class="table-wrap">
+        <table class="dash-table" id="matchTable">
+          <thead>
+            <tr>
+              <th>Datum</th>
+              <th>Tegenstander</th>
+              <th>Tijd</th>
+              <th>Locatie</th>
+              <th class="text-center">T/U</th>
+              <th class="text-center col-status">✓</th>
+              <th class="text-center col-status">?</th>
+              <th class="text-center col-status">✗</th>
+              <th>Spelers</th>
+            </tr>
+          </thead>
+          <tbody id="matchBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Speler statistieken view -->
+    <section class="dash-view dash-view--hidden" id="viewSpelers">
+      <div class="table-wrap">
+        <table class="dash-table" id="playerTable">
+          <thead>
+            <tr>
+              <th>Speler</th>
+              <th class="text-center">Wedstrijden</th>
+              <th class="text-center col-status">✓ Aanwezig</th>
+              <th class="text-center col-status">? Misschien</th>
+              <th class="text-center col-status">✗ Afwezig</th>
+              <th class="text-center">Opkomst %</th>
+              <th>Aanwezigheid</th>
+            </tr>
+          </thead>
+          <tbody id="playerBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Voetbal Aanmelder &mdash; Dashboard<br>
+    Gesponsord door <a href="https://www.facta.nl/" target="_blank" rel="noopener" style="color: var(--pitch-light); text-decoration: none; font-weight: 600;">Facta</a>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>
