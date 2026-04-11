@@ -1,0 +1,118 @@
+/* ──────────────────────────────────────────────
+   Admin panel — Extra styling
+   ────────────────────────────────────────────── */
+
+/* ── Action buttons in table ──────────────────── */
+.actions {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  white-space: nowrap;
+}
+
+.action-btn:hover {
+  filter: brightness(0.9);
+}
+
+.action-btn--edit {
+  background: var(--pitch);
+  color: var(--text-inverse);
+}
+
+.action-btn--block {
+  background: var(--status-misschien);
+  color: #1a1400;
+}
+
+.action-btn--unblock {
+  background: var(--status-aanwezig);
+  color: #001a0d;
+}
+
+.action-btn--delete {
+  background: var(--status-afwezig);
+  color: #fff;
+}
+
+.action-btn--admin {
+  background: var(--pitch-light);
+  color: var(--text-inverse);
+}
+
+.action-btn--demote {
+  background: var(--surface-alt);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* ── Role & status badges ─────────────────────── */
+.role-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.role-badge--admin {
+  background: var(--pitch);
+  color: var(--text-inverse);
+}
+
+.role-badge--speler {
+  background: var(--surface-alt);
+  color: var(--text-muted);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.status-badge--actief {
+  background: var(--status-aanwezig-bg);
+  color: var(--status-aanwezig);
+}
+
+.status-badge--geblokkeerd {
+  background: var(--status-afwezig-bg);
+  color: var(--status-afwezig);
+}
+
+.verify-badge {
+  font-size: 1rem;
+}
+
+/* ── Current-user row highlight ───────────────── */
+.dash-table tbody tr.row--self {
+  background: var(--status-aanwezig-bg);
+}
+
+.dash-table tbody tr.row--blocked {
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .action-btn--block {
+  color: #000;
+}
+
+[data-theme="dark"] .action-btn--unblock {
+  color: #000;
+}

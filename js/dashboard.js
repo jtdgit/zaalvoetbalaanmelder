@@ -8,8 +8,17 @@ const Dashboard = (() => {
   function init() {
     DataStore.seedAlsLeeg();
     initDarkMode();
+    showAdminLink();
     bindEvents();
     render();
+  }
+
+  function showAdminLink() {
+    const sessie = DataStore.getSessie();
+    const link = $('#adminLink');
+    if (link && sessie && DataStore.isAdmin(sessie.id)) {
+      link.style.display = '';
+    }
   }
 
   // ── Dark mode ─────────────────────────────────

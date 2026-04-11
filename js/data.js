@@ -78,11 +78,14 @@ const DataStore = (() => {
     }
 
     const code = genereerCode();
+    const isEersteSpeler = spelers.length === 0;
     const speler = {
       id: uuid(),
       naam: naamTrim,
       email: emailLower,
       wachtwoordHash: await hash(wachtwoord),
+      rol: isEersteSpeler ? 'admin' : 'speler',
+      geblokkeerd: false,
       geverifieerd: false,
       verificatieCode: code,
       aangemaakt: new Date().toISOString(),
@@ -148,6 +151,9 @@ const DataStore = (() => {
     const speler = getSpelerByEmail(email);
     if (!speler) {
       return { ok: false, error: 'Geen account gevonden met dit e-mailadres.' };
+    }
+    if (speler.geblokkeerd) {
+      return { ok: false, error: 'Dit account is geblokkeerd. Neem contact op met de beheerder.' };
     }
     const h = await hash(wachtwoord);
     if (h !== speler.wachtwoordHash) {
@@ -224,6 +230,7 @@ const DataStore = (() => {
       id: speler.id,
       naam: speler.naam,
       email: speler.email,
+      rol: speler.rol || 'speler',
     }));
   }
 
@@ -315,6 +322,104 @@ const DataStore = (() => {
       a => !(a.wedstrijdId === wedstrijdId && a.spelerNaam.toLowerCase() === naamLower)
     );
     save(AANMELDINGEN_KEY, filtered);
+  }
+
+  // ── Admin functies ────────────────────────────
+  function isAdmin(spelerId) {
+    const speler = getSpelerById(spelerId);
+    return speler?.rol === 'admin';
+  }
+
+  function blokkeerSpeler(spelerId) {
+    const spelers = load(SPELERS_KEY);
+    const idx = spelers.findIndex(s => s.id === spelerId);
+    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+    if (spelers[idx].rol === 'admin') return { ok: false, error: 'Een admin kan niet geblokkeerd worden.' };
+    spelers[idx].geblokkeerd = true;
+    spelers[idx].gewijzigd = new Date().toISOString();
+    save(SPELERS_KEY, spelers);
+    return { ok: true };
+  }
+
+  function deblokkeerSpeler(spelerId) {
+    const spelers = load(SPELERS_KEY);
+    const idx = spelers.findIndex(s => s.id === spelerId);
+    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+    spelers[idx].geblokkeerd = false;
+    spelers[idx].gewijzigd = new Date().toISOString();
+    save(SPELERS_KEY, spelers);
+    return { ok: true };
+  }
+
+  function verwijderSpeler(spelerId) {
+    const spelers = load(SPELERS_KEY);
+    const speler = spelers.find(s => s.id === spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+    if (speler.rol === 'admin') return { ok: false, error: 'Een admin kan niet verwijderd worden.' };
+
+    // Verwijder de speler
+    const nieuw = spelers.filter(s => s.id !== spelerId);
+    save(SPELERS_KEY, nieuw);
+
+    // Verwijder alle aanmeldingen van deze speler
+    const aanm = load(AANMELDINGEN_KEY);
+    const naamLower = speler.naam.toLowerCase();
+    save(AANMELDINGEN_KEY, aanm.filter(a => a.spelerNaam.toLowerCase() !== naamLower));
+
+    return { ok: true };
+  }
+
+  function adminUpdateSpeler(spelerId, updates) {
+    const spelers = load(SPELERS_KEY);
+    const idx = spelers.findIndex(s => s.id === spelerId);
+    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+
+    if (updates.naam !== undefined) {
+      const oudeNaam = spelers[idx].naam;
+      const nieuweNaam = updates.naam.trim();
+      if (nieuweNaam && oudeNaam.toLowerCase() !== nieuweNaam.toLowerCase()) {
+        const aanm = load(AANMELDINGEN_KEY);
+        aanm.forEach(a => {
+          if (a.spelerNaam.toLowerCase() === oudeNaam.toLowerCase()) {
+            a.spelerNaam = nieuweNaam;
+          }
+        });
+        save(AANMELDINGEN_KEY, aanm);
+      }
+      spelers[idx].naam = nieuweNaam || spelers[idx].naam;
+    }
+
+    if (updates.email !== undefined) {
+      const emailLower = updates.email.trim().toLowerCase();
+      if (emailLower && spelers.some(s => s.email === emailLower && s.id !== spelerId)) {
+        return { ok: false, error: 'Dit e-mailadres is al in gebruik.' };
+      }
+      spelers[idx].email = emailLower || spelers[idx].email;
+    }
+
+    spelers[idx].gewijzigd = new Date().toISOString();
+    save(SPELERS_KEY, spelers);
+    return { ok: true, speler: spelers[idx] };
+  }
+
+  function maakAdmin(spelerId) {
+    const spelers = load(SPELERS_KEY);
+    const idx = spelers.findIndex(s => s.id === spelerId);
+    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+    spelers[idx].rol = 'admin';
+    save(SPELERS_KEY, spelers);
+    return { ok: true };
+  }
+
+  function verwijderAdmin(spelerId) {
+    const spelers = load(SPELERS_KEY);
+    const idx = spelers.findIndex(s => s.id === spelerId);
+    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+    const admins = spelers.filter(s => s.rol === 'admin');
+    if (admins.length <= 1) return { ok: false, error: 'Er moet minimaal één admin blijven.' };
+    spelers[idx].rol = 'speler';
+    save(SPELERS_KEY, spelers);
+    return { ok: true };
   }
 
   // â”€â”€ Seed Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -409,5 +514,13 @@ const DataStore = (() => {
     getSessie,
     setSessie,
     verwijderSessie,
+    // Admin
+    isAdmin,
+    blokkeerSpeler,
+    deblokkeerSpeler,
+    verwijderSpeler,
+    adminUpdateSpeler,
+    maakAdmin,
+    verwijderAdmin,
   };
 })();

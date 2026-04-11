@@ -53,7 +53,7 @@ const App = (() => {
       // Verifieer dat account nog bestaat
       const speler = DataStore.getSpelerById(sessie.id);
       if (speler) {
-        currentPlayer = { id: speler.id, naam: speler.naam, email: speler.email };
+        currentPlayer = { id: speler.id, naam: speler.naam, email: speler.email, rol: speler.rol };
         showLoggedIn();
         return;
       }
@@ -67,6 +67,11 @@ const App = (() => {
     playerAvatar.textContent = currentPlayer.naam.charAt(0).toUpperCase();
     playerNameEl.textContent = currentPlayer.naam;
     playerBadge.style.display = '';
+    // Toon admin-link als de gebruiker admin is
+    const adminLink = $('#adminLink');
+    if (adminLink) {
+      adminLink.style.display = currentPlayer.rol === 'admin' ? '' : 'none';
+    }
   }
 
   function showLoginScreen() {
@@ -95,7 +100,7 @@ const App = (() => {
       $('#loginError').textContent = result.error;
       return;
     }
-    currentPlayer = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email };
+    currentPlayer = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email, rol: result.speler.rol };
     DataStore.setSessie(result.speler);
     showLoggedIn();
     render();
@@ -121,7 +126,7 @@ const App = (() => {
       return;
     }
 
-    pendingVerify = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email };
+    pendingVerify = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email, rol: result.speler.rol };
     registerForm.reset();
 
     // Toon gesimuleerde bevestigingsmail

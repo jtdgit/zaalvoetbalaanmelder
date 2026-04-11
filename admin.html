@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Team: Facta</title>
+  <link rel="stylesheet" href="css/aanmelder.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🔧</text></svg>">
+</head>
+<body>
+
+  <!-- Geen-toegang overlay -->
+  <div class="login-overlay" id="noAccessOverlay">
+    <div class="login-card">
+      <span class="login-card__icon">🔒</span>
+      <h1 class="login-card__title">Geen toegang</h1>
+      <p class="login-card__subtitle">Je hebt geen admin-rechten. Log in met een admin-account op de aanmeldpagina.</p>
+      <a href="index.html" class="btn btn--primary login-card__btn">← Terug naar aanmelder</a>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__inner">
+      <div class="header__brand">
+        <span class="header__icon">🔧</span>
+        <div>
+          <h1 class="header__title">Admin</h1>
+          <p class="header__subtitle">Gebruikersbeheer</p>
+        </div>
+      </div>
+      <div class="header__stats">
+        <nav class="nav-tabs">
+          <a href="index.html" class="nav-tabs__link">⚽ Aanmelder</a>
+          <a href="dashboard.html" class="nav-tabs__link">📊 Dashboard</a>
+          <a href="admin.html" class="nav-tabs__link nav-tabs__link--active">🔧 Admin</a>
+        </nav>
+        <button class="darkmode-toggle" id="darkToggle" title="Wissel licht/donker thema">
+          <span id="darkIcon">🌙</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main" id="adminMain" style="display:none">
+
+    <!-- Summary -->
+    <section class="summary">
+      <div class="summary__card">
+        <span class="summary__value" id="sumTotaal">0</span>
+        <span class="summary__label">Gebruikers</span>
+      </div>
+      <div class="summary__card summary__card--green">
+        <span class="summary__value" id="sumActief">0</span>
+        <span class="summary__label">Actief</span>
+      </div>
+      <div class="summary__card summary__card--red">
+        <span class="summary__value" id="sumGeblokkeerd">0</span>
+        <span class="summary__label">Geblokkeerd</span>
+      </div>
+      <div class="summary__card summary__card--yellow">
+        <span class="summary__value" id="sumAdmin">0</span>
+        <span class="summary__label">Admins</span>
+      </div>
+    </section>
+
+    <!-- User table -->
+    <section class="table-wrap">
+      <table class="dash-table" id="userTable">
+        <thead>
+          <tr>
+            <th>Naam</th>
+            <th>E-mail</th>
+            <th class="text-center">Rol</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Geverifieerd</th>
+            <th>Aangemaakt</th>
+            <th class="text-center">Acties</th>
+          </tr>
+        </thead>
+        <tbody id="userBody"></tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <!-- Edit user modal -->
+  <div class="modal-overlay modal-overlay--hidden" id="editOverlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">Gebruiker bewerken</h2>
+        <button type="button" class="modal__close" id="editClose">✕</button>
+      </div>
+      <form class="modal__form" id="editForm" autocomplete="off">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label for="editNaam">Naam</label>
+          <input type="text" id="editNaam" required maxlength="40">
+        </div>
+        <div class="form-group">
+          <label for="editEmail">E-mailadres</label>
+          <input type="email" id="editEmail" required>
+        </div>
+        <p class="login-card__error" id="editError"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Opslaan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Team: Facta &mdash; Admin panel<br>
+    Gesponsord door <a href="https://www.facta.nl/" target="_blank" rel="noopener" style="color: var(--pitch-light); text-decoration: none; font-weight: 600;">Facta</a>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
