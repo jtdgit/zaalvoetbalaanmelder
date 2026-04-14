@@ -226,9 +226,8 @@ const Admin = (() => {
     e.preventDefault();
     const id    = $('#editId').value;
     const naam  = $('#editNaam').value.trim();
-    const email = $('#editEmail').value.trim();
 
-    const result = await DataStore.adminUpdateSpeler(id, { naam, email });
+    const result = await DataStore.adminUpdateSpeler(id, { naam });
     if (!result.ok) {
       $('#editError').textContent = result.error;
       return;

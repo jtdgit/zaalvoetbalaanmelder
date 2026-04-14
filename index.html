@@ -10,35 +10,48 @@
 </head>
 <body>
 
-  <!-- Login / Register overlay -->
+  <!-- Login overlay (Magic Link) -->
   <div class="login-overlay" id="loginOverlay">
     <div class="login-card">
       <span class="login-card__icon">⚽</span>
       <h1 class="login-card__title">Team: Facta</h1>
 
-      <!-- Tab switch -->
-      <div class="auth-tabs" id="authTabs">
-        <button type="button" class="auth-tabs__btn auth-tabs__btn--active" data-tab="login">Inloggen</button>
-        <button type="button" class="auth-tabs__btn" data-tab="register">Registreren</button>
-      </div>
-
-      <!-- Login form -->
-      <form class="login-card__form" id="loginForm" autocomplete="off">
-        <input type="email" class="login-card__input" id="loginEmail" placeholder="E-mailadres" required>
-        <input type="password" class="login-card__input" id="loginWachtwoord" placeholder="Wachtwoord" required minlength="4">
-        <p class="login-card__error" id="loginError"></p>
-        <button type="submit" class="btn btn--primary login-card__btn">Inloggen →</button>
-        <button type="button" class="login-card__link" id="forgotPasswordBtn">Wachtwoord vergeten?</button>
+      <!-- Magic link form -->
+      <form class="login-card__form" id="magicLinkForm" autocomplete="off">
+        <p style="text-align:center;color:var(--text-muted);margin:0 0 .75rem;font-size:.95rem;">Voer je e-mailadres in om een inloglink te ontvangen.</p>
+        <input type="email" class="login-card__input" id="magicEmail" placeholder="E-mailadres" required>
+        <p class="login-card__error" id="magicError"></p>
+        <button type="submit" class="btn btn--primary login-card__btn">📧 Stuur inloglink</button>
       </form>
 
-      <!-- Register form -->
-      <form class="login-card__form login-card__form--hidden" id="registerForm" autocomplete="off">
-        <input type="text" class="login-card__input" id="regNaam" placeholder="Je naam" required maxlength="40">
-        <input type="email" class="login-card__input" id="regEmail" placeholder="E-mailadres" required>
-        <input type="password" class="login-card__input" id="regWachtwoord" placeholder="Wachtwoord (min. 4 tekens)" required minlength="4">
-        <input type="password" class="login-card__input" id="regWachtwoord2" placeholder="Wachtwoord bevestigen" required minlength="4">
-        <p class="login-card__error" id="registerError"></p>
-        <button type="submit" class="btn btn--primary login-card__btn">Account aanmaken →</button>
+      <!-- Sent confirmation -->
+      <div class="login-card__form login-card__form--hidden" id="magicSent">
+        <div style="text-align:center;padding:1rem 0;">
+          <span style="font-size:3rem;">📬</span>
+          <p style="margin:.75rem 0;font-size:1.05rem;">Er is een inloglink verstuurd naar<br><strong id="magicSentEmail"></strong></p>
+          <p style="color:var(--text-muted);font-size:.9rem;">Klik op de link in je e-mail om in te loggen.</p>
+        </div>
+        <button type="button" class="login-card__link" id="magicRetry">Ander e-mailadres gebruiken</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Naam invullen modal (nieuwe gebruikers) -->
+  <div class="modal-overlay modal-overlay--hidden" id="nameOverlay">
+    <div class="modal">
+      <div class="modal__header">
+        <h2 class="modal__title">Welkom! Hoe heet je?</h2>
+      </div>
+      <p style="color:var(--text-muted);margin:0 0 1rem;font-size:.95rem;">De eerste speler wordt automatisch admin van het team.</p>
+      <form class="modal__form" id="nameForm" autocomplete="off">
+        <div class="form-group">
+          <label for="newName">Je naam</label>
+          <input type="text" id="newName" placeholder="bijv. Jarno" required maxlength="40">
+        </div>
+        <p class="login-card__error" id="nameError"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Doorgaan →</button>
+        </div>
       </form>
     </div>
   </div>
@@ -57,97 +70,13 @@
         </div>
         <div class="form-group">
           <label for="profEmail">E-mailadres</label>
-          <input type="email" id="profEmail" required>
+          <input type="email" id="profEmail" disabled style="opacity:.6;cursor:not-allowed;">
         </div>
         <p class="login-card__error" id="profileError"></p>
         <div class="form-actions">
           <button type="submit" class="btn btn--primary">Opslaan</button>
         </div>
       </form>
-      <hr class="modal__divider">
-      <h3 class="modal__subtitle">Wachtwoord wijzigen</h3>
-      <form class="modal__form" id="passwordForm" autocomplete="off">
-        <div class="form-group">
-          <label for="profOudWw">Huidig wachtwoord</label>
-          <input type="password" id="profOudWw" required minlength="4">
-        </div>
-        <div class="form-group">
-          <label for="profNieuwWw">Nieuw wachtwoord</label>
-          <input type="password" id="profNieuwWw" required minlength="4">
-        </div>
-        <p class="login-card__error" id="passwordError"></p>
-        <div class="form-actions">
-          <button type="submit" class="btn btn--primary">Wachtwoord wijzigen</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Email simulatie modal (popup i.p.v. echte mail) -->
-  <div class="modal-overlay modal-overlay--hidden" id="emailSimOverlay">
-    <div class="modal email-sim">
-      <div class="email-sim__header">
-        <span class="email-sim__icon">📧</span>
-        <div>
-          <p class="email-sim__from">Van: noreply@voetbalaanmelder.nl</p>
-          <p class="email-sim__to">Aan: <span id="emailSimTo"></span></p>
-          <p class="email-sim__subject">Onderwerp: <strong id="emailSimSubject"></strong></p>
-        </div>
-      </div>
-      <hr class="modal__divider">
-      <div class="email-sim__body" id="emailSimBody"></div>
-      <div class="form-actions">
-        <button type="button" class="btn btn--primary" id="emailSimClose">Sluiten</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Verificatie modal -->
-  <div class="modal-overlay modal-overlay--hidden" id="verifyOverlay">
-    <div class="modal">
-      <div class="modal__header">
-        <h2 class="modal__title">E-mail verifiëren</h2>
-      </div>
-      <p class="verify__hint">Voer de 6-cijferige code in die je per "e-mail" hebt ontvangen.</p>
-      <form class="modal__form" id="verifyForm" autocomplete="off">
-        <input type="text" class="login-card__input verify__code-input" id="verifyCode" placeholder="000000" required maxlength="6" pattern="\d{6}" inputmode="numeric">
-        <p class="login-card__error" id="verifyError"></p>
-        <div class="form-actions">
-          <button type="submit" class="btn btn--primary">Verifiëren</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Wachtwoord vergeten modal -->
-  <div class="modal-overlay modal-overlay--hidden" id="forgotOverlay">
-    <div class="modal">
-      <div class="modal__header">
-        <h2 class="modal__title">Wachtwoord vergeten</h2>
-        <button type="button" class="modal__close" id="forgotClose">✕</button>
-      </div>
-      <div id="forgotStep1">
-        <p class="verify__hint">Voer je e-mailadres in. Je ontvangt een code om je wachtwoord te resetten.</p>
-        <form class="modal__form" id="forgotForm" autocomplete="off">
-          <input type="email" class="login-card__input" id="forgotEmail" placeholder="E-mailadres" required>
-          <p class="login-card__error" id="forgotError"></p>
-          <div class="form-actions">
-            <button type="submit" class="btn btn--primary">Verstuur resetcode</button>
-          </div>
-        </form>
-      </div>
-      <div id="forgotStep2" style="display:none">
-        <p class="verify__hint">Voer de resetcode en je nieuwe wachtwoord in.</p>
-        <form class="modal__form" id="resetForm" autocomplete="off">
-          <input type="text" class="login-card__input verify__code-input" id="resetCode" placeholder="Resetcode (6 cijfers)" required maxlength="6" pattern="\d{6}" inputmode="numeric">
-          <input type="password" class="login-card__input" id="resetNieuwWw" placeholder="Nieuw wachtwoord (min. 4 tekens)" required minlength="4">
-          <input type="password" class="login-card__input" id="resetNieuwWw2" placeholder="Bevestig nieuw wachtwoord" required minlength="4">
-          <p class="login-card__error" id="resetError"></p>
-          <div class="form-actions">
-            <button type="submit" class="btn btn--primary">Wachtwoord opslaan</button>
-          </div>
-        </form>
-      </div>
     </div>
   </div>
 
@@ -244,7 +173,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    Team: Facta &mdash; Data wordt lokaal opgeslagen in je browser.<br>
+    Team: Facta &mdash; Gedeeld via Supabase.<br>
     Gesponsord door <a href="https://www.facta.nl/" target="_blank" rel="noopener" style="color: var(--pitch-light); text-decoration: none; font-weight: 600;">Facta</a>
   </footer>
 
