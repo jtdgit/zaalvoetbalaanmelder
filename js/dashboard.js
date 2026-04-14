@@ -5,18 +5,18 @@
 const Dashboard = (() => {
   const $ = s => document.querySelector(s);
 
-  function init() {
-    DataStore.seedAlsLeeg();
+  async function init() {
+    await DataStore.seedAlsLeeg();
     initDarkMode();
-    showAdminLink();
+    await showAdminLink();
     bindEvents();
-    render();
+    await render();
   }
 
-  function showAdminLink() {
+  async function showAdminLink() {
     const sessie = DataStore.getSessie();
     const link = $('#adminLink');
-    if (link && sessie && DataStore.isAdmin(sessie.id)) {
+    if (link && sessie && await DataStore.isAdmin(sessie.id)) {
       link.style.display = '';
     }
   }
@@ -62,9 +62,9 @@ const Dashboard = (() => {
   }
 
   // ── Render ────────────────────────────────────
-  function render() {
-    const wedstrijden = DataStore.getWedstrijden();
-    const alleAanm = DataStore.getAanmeldingen();
+  async function render() {
+    const wedstrijden = await DataStore.getWedstrijden();
+    const alleAanm = await DataStore.getAanmeldingen();
 
     renderSummary(wedstrijden, alleAanm);
     renderMatchTable(wedstrijden, alleAanm);
@@ -106,7 +106,7 @@ const Dashboard = (() => {
         <td><strong>${esc(w.tegenstander)}</strong></td>
         <td>${esc(w.tijdstip || '—')}</td>
         <td>${esc(w.locatie || '—')}</td>
-        <td class="text-center"><span class="badge-tu badge-tu--${w.thuisUit}">${w.thuisUit === 'thuis' ? 'T' : 'U'}</span></td>
+        <td class="text-center"><span class="badge-tu badge-tu--${w.thuis_uit || w.thuisUit}">${(w.thuis_uit || w.thuisUit) === 'thuis' ? 'T' : 'U'}</span></td>
         <td class="text-center"><span class="chip chip--aanwezig">${a.length}</span></td>
         <td class="text-center"><span class="chip chip--misschien">${m.length}</span></td>
         <td class="text-center"><span class="chip chip--afwezig">${f.length}</span></td>

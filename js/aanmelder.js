@@ -32,26 +32,25 @@ const App = (() => {
   const statWedstr    = $('#statWedstrijden');
   const statSpelers   = $('#statSpelers');
 
-  let currentPlayer = null; // { id, naam, email }
-  let pendingVerify = null; // { id, naam, email } — wacht op e-mailverificatie
-  let forgotEmail = null;   // e-mail waarvoor reset is aangevraagd
+  let currentPlayer = null;
+  let pendingVerify = null;
+  let forgotEmail = null;
   let toastTimer = null;
 
   // ── Init ──────────────────────────────────────
-  function init() {
-    DataStore.seedAlsLeeg();
+  async function init() {
+    await DataStore.seedAlsLeeg();
     initDarkMode();
-    initLogin();
+    await initLogin();
     bindEvents();
-    render();
+    await render();
   }
 
   // ── Login / Logout / Register ─────────────────
-  function initLogin() {
+  async function initLogin() {
     const sessie = DataStore.getSessie();
     if (sessie) {
-      // Verifieer dat account nog bestaat
-      const speler = DataStore.getSpelerById(sessie.id);
+      const speler = await DataStore.getSpelerById(sessie.id);
       if (speler) {
         currentPlayer = { id: speler.id, naam: speler.naam, email: speler.email, rol: speler.rol };
         showLoggedIn();
@@ -67,7 +66,6 @@ const App = (() => {
     playerAvatar.textContent = currentPlayer.naam.charAt(0).toUpperCase();
     playerNameEl.textContent = currentPlayer.naam;
     playerBadge.style.display = '';
-    // Toon admin-link als de gebruiker admin is
     const adminLink = $('#adminLink');
     if (adminLink) {
       adminLink.style.display = currentPlayer.rol === 'admin' ? '' : 'none';
@@ -86,7 +84,6 @@ const App = (() => {
     });
     loginForm.classList.toggle('login-card__form--hidden', tab !== 'login');
     registerForm.classList.toggle('login-card__form--hidden', tab !== 'register');
-    // Reset errors
     $('#loginError').textContent = '';
     $('#registerError').textContent = '';
   }
@@ -103,7 +100,7 @@ const App = (() => {
     currentPlayer = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email, rol: result.speler.rol };
     DataStore.setSessie(result.speler);
     showLoggedIn();
-    render();
+    await render();
     toast(`Welkom terug, ${currentPlayer.naam}!`);
     loginForm.reset();
   }
@@ -129,12 +126,11 @@ const App = (() => {
     pendingVerify = { id: result.speler.id, naam: result.speler.naam, email: result.speler.email, rol: result.speler.rol };
     registerForm.reset();
 
-    // Toon gesimuleerde bevestigingsmail
     showEmailSim(
       email,
       'Bevestig je registratie',
       `<p>Hoi <strong>${esc(naam)}</strong>,</p>
-       <p>Welkom bij Voetbal Aanmelder! Gebruik deze code om je e-mailadres te bevestigen:</p>
+       <p>Welkom bij Team: Facta! Gebruik deze code om je e-mailadres te bevestigen:</p>
        <p class="email-code">${result.verificatieCode}</p>
        <p>De code is 15 minuten geldig.</p>
        <p>Veel plezier op het veld! ⚽</p>`
@@ -151,17 +147,16 @@ const App = (() => {
 
   function closeEmailSim() {
     emailSimOverlay.classList.add('modal-overlay--hidden');
-    // Als er een verificatie pending is, toon het verificatieformulier
     if (pendingVerify) {
       verifyOverlay.classList.remove('modal-overlay--hidden');
     }
   }
 
-  function handleVerify(e) {
+  async function handleVerify(e) {
     e.preventDefault();
     if (!pendingVerify) return;
     const code = $('#verifyCode').value.trim();
-    const result = DataStore.verifieerEmail(pendingVerify.id, code);
+    const result = await DataStore.verifieerEmail(pendingVerify.id, code);
     if (!result.ok) {
       $('#verifyError').textContent = result.error;
       return;
@@ -172,7 +167,7 @@ const App = (() => {
     verifyOverlay.classList.add('modal-overlay--hidden');
     verifyForm.reset();
     showLoggedIn();
-    render();
+    await render();
     toast(`Welkom, ${currentPlayer.naam}! E-mail geverifieerd.`);
   }
 
@@ -192,17 +187,16 @@ const App = (() => {
     forgotOverlay.classList.add('modal-overlay--hidden');
   }
 
-  function handleForgotSubmit(e) {
+  async function handleForgotSubmit(e) {
     e.preventDefault();
     const email = $('#forgotEmail').value.trim();
-    const result = DataStore.genereerResetCode(email);
+    const result = await DataStore.genereerResetCode(email);
     if (!result.ok) {
       $('#forgotError').textContent = result.error;
       return;
     }
     forgotEmail = email;
 
-    // Toon gesimuleerde reset-mail
     showEmailSim(
       email,
       'Wachtwoord resetten',
@@ -212,7 +206,6 @@ const App = (() => {
        <p>De code is 15 minuten geldig. Heb je dit niet aangevraagd? Negeer dan deze e-mail.</p>`
     );
 
-    // Na sluiten van email-sim, toon stap 2
     $('#forgotStep1').style.display = 'none';
     $('#forgotStep2').style.display = '';
   }
@@ -261,12 +254,12 @@ const App = (() => {
     profileOverlay.classList.add('modal-overlay--hidden');
   }
 
-  function handleProfileSave(e) {
+  async function handleProfileSave(e) {
     e.preventDefault();
     const naam  = $('#profNaam').value.trim();
     const email = $('#profEmail').value.trim();
 
-    const result = DataStore.updateProfiel(currentPlayer.id, { naam, email });
+    const result = await DataStore.updateProfiel(currentPlayer.id, { naam, email });
     if (!result.ok) {
       $('#profileError').textContent = result.error;
       return;
@@ -276,7 +269,7 @@ const App = (() => {
     currentPlayer.email = result.speler.email;
     DataStore.setSessie(result.speler);
     showLoggedIn();
-    render();
+    await render();
     toast('Profiel bijgewerkt');
     closeProfile();
   }
@@ -321,7 +314,6 @@ const App = (() => {
   function bindEvents() {
     $('#darkToggle').addEventListener('click', toggleDarkMode);
 
-    // Auth tabs
     authTabs.addEventListener('click', e => {
       const btn = e.target.closest('.auth-tabs__btn');
       if (btn) switchAuthTab(btn.dataset.tab);
@@ -331,16 +323,13 @@ const App = (() => {
     registerForm.addEventListener('submit', handleRegister);
     logoutBtn.addEventListener('click', logout);
 
-    // Email simulatie
     $('#emailSimClose').addEventListener('click', closeEmailSim);
     emailSimOverlay.addEventListener('click', e => {
       if (e.target === emailSimOverlay) closeEmailSim();
     });
 
-    // Verificatie
     verifyForm.addEventListener('submit', handleVerify);
 
-    // Wachtwoord vergeten
     $('#forgotPasswordBtn').addEventListener('click', openForgot);
     $('#forgotClose').addEventListener('click', closeForgot);
     forgotOverlay.addEventListener('click', e => {
@@ -349,7 +338,6 @@ const App = (() => {
     forgotForm.addEventListener('submit', handleForgotSubmit);
     resetForm.addEventListener('submit', handleResetSubmit);
 
-    // Profile
     profileBtn.addEventListener('click', openProfile);
     profileClose.addEventListener('click', closeProfile);
     profileOverlay.addEventListener('click', e => {
@@ -362,13 +350,12 @@ const App = (() => {
       addPanel.classList.toggle('add-panel--open');
     });
 
-    addForm.addEventListener('submit', e => {
+    addForm.addEventListener('submit', async e => {
       e.preventDefault();
-      handleAddMatch();
+      await handleAddMatch();
     });
 
-    // Delegate clicks inside match cards
-    matchesEl.addEventListener('click', e => {
+    matchesEl.addEventListener('click', async e => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
 
@@ -376,14 +363,14 @@ const App = (() => {
       const card   = btn.closest('.match-card');
       const id     = card?.dataset.id;
 
-      if (action === 'delete') handleDelete(id);
-      if (action === 'signup') handleQuickSignup(btn, id);
-      if (action === 'remove-player') handleRemovePlayer(btn, id);
+      if (action === 'delete') await handleDelete(id);
+      if (action === 'signup') await handleQuickSignup(btn, id);
+      if (action === 'remove-player') await handleRemovePlayer(btn, id);
     });
   }
 
   // ── Handlers ──────────────────────────────────
-  function handleAddMatch() {
+  async function handleAddMatch() {
     const tegenstander = $('#fTegenstander').value.trim();
     const datum        = $('#fDatum').value;
     const tijdstip     = $('#fTijdstip').value;
@@ -392,60 +379,58 @@ const App = (() => {
 
     if (!tegenstander || !datum) return;
 
-    DataStore.voegWedstrijdToe({ tegenstander, datum, tijdstip, locatie, thuisUit });
+    await DataStore.voegWedstrijdToe({ tegenstander, datum, tijdstip, locatie, thuisUit });
     addForm.reset();
     $('#fTijdstip').value = '14:30';
     addPanel.classList.remove('add-panel--open');
-    render();
+    await render();
     toast(`Wedstrijd tegen ${tegenstander} toegevoegd`);
   }
 
-  function handleDelete(id) {
-    const wedstrijden = DataStore.getWedstrijden();
+  async function handleDelete(id) {
+    const wedstrijden = await DataStore.getWedstrijden();
     const w = wedstrijden.find(m => m.id === id);
     if (!w) return;
     if (!confirm(`Wedstrijd tegen ${w.tegenstander} verwijderen?\nAlle aanmeldingen gaan verloren.`)) return;
 
-    DataStore.verwijderWedstrijd(id);
-    render();
+    await DataStore.verwijderWedstrijd(id);
+    await render();
     toast('Wedstrijd verwijderd');
   }
 
-  function handleQuickSignup(btn, id) {
+  async function handleQuickSignup(btn, id) {
     if (!currentPlayer) return;
     const status = btn.dataset.status;
 
-    // Toggle: als je dezelfde status nogmaals klikt, verwijder de aanmelding
-    const bestaande = DataStore.getAanmeldingen(id)
-      .find(a => a.spelerNaam.toLowerCase() === currentPlayer.naam.toLowerCase());
+    const aanmeldingen = await DataStore.getAanmeldingen(id);
+    const bestaande = aanmeldingen.find(a => a.spelerNaam.toLowerCase() === currentPlayer.naam.toLowerCase());
 
     if (bestaande && bestaande.status === status) {
-      DataStore.verwijderAanmelding(id, currentPlayer.naam);
-      render();
+      await DataStore.verwijderAanmelding(id, currentPlayer.naam);
+      await render();
       toast('Aanmelding verwijderd');
       return;
     }
 
-    DataStore.zetAanmelding(id, currentPlayer.naam, status);
-    render();
+    await DataStore.zetAanmelding(id, currentPlayer.naam, status);
+    await render();
 
     const labels = { aanwezig: 'aanwezig ✓', misschien: 'misschien ⏳', afwezig: 'afwezig ✗' };
     toast(`${currentPlayer.naam} → ${labels[status]}`);
   }
 
-  function handleRemovePlayer(btn, matchId) {
+  async function handleRemovePlayer(btn, matchId) {
     const naam = btn.dataset.player;
     if (!naam) return;
-    DataStore.verwijderAanmelding(matchId, naam);
-    render();
+    await DataStore.verwijderAanmelding(matchId, naam);
+    await render();
   }
 
   // ── Rendering ─────────────────────────────────
-  function render() {
-    const wedstrijden = DataStore.getWedstrijden();
-    const alleAanmeldingen = DataStore.getAanmeldingen();
+  async function render() {
+    const wedstrijden = await DataStore.getWedstrijden();
+    const alleAanmeldingen = await DataStore.getAanmeldingen();
 
-    // Header stats
     statWedstr.textContent  = wedstrijden.length;
     statSpelers.textContent = alleAanmeldingen.length;
 
@@ -468,6 +453,7 @@ const App = (() => {
   function renderCard(w, aanmeldingen, index) {
     const datum    = formatDatum(w.datum);
     const isPast   = new Date(w.datum + 'T23:59:59') < new Date();
+    const thuisUit = w.thuis_uit || w.thuisUit || 'thuis';
     const aanwezig  = aanmeldingen.filter(a => a.status === 'aanwezig');
     const misschien = aanmeldingen.filter(a => a.status === 'misschien');
     const afwezig   = aanmeldingen.filter(a => a.status === 'afwezig');
@@ -484,8 +470,8 @@ const App = (() => {
           </div>
         </div>
         <div class="match-card__actions">
-          <span class="match-card__badge match-card__badge--${w.thuisUit}">
-            ${w.thuisUit === 'thuis' ? '🏠 Thuis' : '🚌 Uit'}
+          <span class="match-card__badge match-card__badge--${thuisUit}">
+            ${thuisUit === 'thuis' ? '🏠 Thuis' : '🚌 Uit'}
           </span>
           <button class="btn btn--danger" data-action="delete" title="Verwijder wedstrijd">✕</button>
         </div>

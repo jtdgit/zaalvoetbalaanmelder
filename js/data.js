@@ -1,43 +1,21 @@
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-//  VoetbalAanmelder â€” Data Layer (localStorage)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ──────────────────────────────────────────────
+//  VoetbalAanmelder — Data Layer (Supabase)
+// ──────────────────────────────────────────────
 
 const DataStore = (() => {
-  const WEDSTRIJDEN_KEY = 'va_wedstrijden';
-  const AANMELDINGEN_KEY = 'va_aanmeldingen';
-  const SPELERS_KEY = 'va_spelers';
+  const SUPABASE_URL = 'https://dwiarctxxpwknlryijdn.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3aWFyY3R4eHB3a25scnlpamRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMzMzOTYsImV4cCI6MjA5MTYwOTM5Nn0.1OVlyp9spaZm4mLi3A2NZ4GQohaWeEN_eKltZON2KfA';
   const SESSIE_KEY = 'va_sessie';
 
-  // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function uuid() {
-    return crypto.randomUUID
-      ? crypto.randomUUID()
-      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-          const r = (Math.random() * 16) | 0;
-          return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-        });
-  }
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  function load(key) {
-    try {
-      return JSON.parse(localStorage.getItem(key)) || [];
-    } catch {
-      return [];
-    }
-  }
-
-  function save(key, data) {
-    localStorage.setItem(key, JSON.stringify(data));
-  }
-
-  /** Hash wachtwoord â€” SHA-256 als beschikbaar, anders simpele hash als fallback (file:// protocol). */
+  // ── Helpers ───────────────────────────────────
   async function hash(tekst) {
     if (crypto.subtle) {
       const enc = new TextEncoder().encode(tekst);
       const buf = await crypto.subtle.digest('SHA-256', enc);
       return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    // Fallback: simple djb2-style hash for file:// contexts where crypto.subtle is unavailable
     let h = 5381;
     for (let i = 0; i < tekst.length; i++) {
       h = ((h << 5) + h + tekst.charCodeAt(i)) >>> 0;
@@ -45,184 +23,14 @@ const DataStore = (() => {
     return 'fb-' + h.toString(16).padStart(8, '0');
   }
 
-  // â”€â”€ Spelers / Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function getSpelers() {
-    return load(SPELERS_KEY);
-  }
-
-  function getSpelerById(id) {
-    return load(SPELERS_KEY).find(s => s.id === id) || null;
-  }
-
-  function getSpelerByEmail(email) {
-    const e = email.trim().toLowerCase();
-    return load(SPELERS_KEY).find(s => s.email === e) || null;
-  }
-
-  /** Genereer een 6-cijferige verificatiecode. */
   function genereerCode() {
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  /**
-   * Registreer een nieuwe speler.
-   * @returns {{ ok: boolean, error?: string, speler?: object, verificatieCode?: string }}
-   */
-  async function registreerSpeler({ naam, email, wachtwoord }) {
-    const spelers = load(SPELERS_KEY);
-    const emailLower = email.trim().toLowerCase();
-    const naamTrim = naam.trim();
-
-    if (spelers.some(s => s.email === emailLower)) {
-      return { ok: false, error: 'Er bestaat al een account met dit e-mailadres.' };
-    }
-
-    const code = genereerCode();
-    const isEersteSpeler = spelers.length === 0;
-    const speler = {
-      id: uuid(),
-      naam: naamTrim,
-      email: emailLower,
-      wachtwoordHash: await hash(wachtwoord),
-      rol: isEersteSpeler ? 'admin' : 'speler',
-      geblokkeerd: false,
-      geverifieerd: false,
-      verificatieCode: code,
-      aangemaakt: new Date().toISOString(),
-    };
-    spelers.push(speler);
-    save(SPELERS_KEY, spelers);
-    return { ok: true, speler, verificatieCode: code };
-  }
-
-  /** Verifieer e-mailadres met code. */
-  function verifieerEmail(spelerId, code) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-    if (spelers[idx].verificatieCode !== code) {
-      return { ok: false, error: 'Ongeldige verificatiecode.' };
-    }
-    spelers[idx].geverifieerd = true;
-    delete spelers[idx].verificatieCode;
-    save(SPELERS_KEY, spelers);
-    return { ok: true };
-  }
-
-  /** Genereer een wachtwoord-reset code voor een e-mailadres. */
-  function genereerResetCode(email) {
-    const spelers = load(SPELERS_KEY);
-    const emailLower = email.trim().toLowerCase();
-    const idx = spelers.findIndex(s => s.email === emailLower);
-    if (idx < 0) return { ok: false, error: 'Geen account gevonden met dit e-mailadres.' };
-
-    const code = genereerCode();
-    spelers[idx].resetCode = code;
-    spelers[idx].resetVerloopt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-    save(SPELERS_KEY, spelers);
-    return { ok: true, code, naam: spelers[idx].naam };
-  }
-
-  /** Stel een nieuw wachtwoord in met reset-code. */
-  async function resetWachtwoord(email, code, nieuwWachtwoord) {
-    const spelers = load(SPELERS_KEY);
-    const emailLower = email.trim().toLowerCase();
-    const idx = spelers.findIndex(s => s.email === emailLower);
-    if (idx < 0) return { ok: false, error: 'Geen account gevonden.' };
-    if (spelers[idx].resetCode !== code) {
-      return { ok: false, error: 'Ongeldige resetcode.' };
-    }
-    if (new Date(spelers[idx].resetVerloopt) < new Date()) {
-      return { ok: false, error: 'Resetcode is verlopen. Vraag een nieuwe aan.' };
-    }
-    spelers[idx].wachtwoordHash = await hash(nieuwWachtwoord);
-    delete spelers[idx].resetCode;
-    delete spelers[idx].resetVerloopt;
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
-    return { ok: true };
-  }
-
-  /**
-   * Log in met e-mail en wachtwoord.
-   * @returns {{ ok: boolean, error?: string, speler?: object }}
-   */
-  async function loginSpeler(email, wachtwoord) {
-    const speler = getSpelerByEmail(email);
-    if (!speler) {
-      return { ok: false, error: 'Geen account gevonden met dit e-mailadres.' };
-    }
-    if (speler.geblokkeerd) {
-      return { ok: false, error: 'Dit account is geblokkeerd. Neem contact op met de beheerder.' };
-    }
-    const h = await hash(wachtwoord);
-    if (h !== speler.wachtwoordHash) {
-      return { ok: false, error: 'Wachtwoord is onjuist.' };
-    }
-    return { ok: true, speler };
-  }
-
-  /** Update profiel (naam en/of email). */
-  function updateProfiel(spelerId, updates) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-
-    if (updates.email) {
-      const emailLower = updates.email.trim().toLowerCase();
-      if (spelers.some(s => s.email === emailLower && s.id !== spelerId)) {
-        return { ok: false, error: 'Dit e-mailadres is al in gebruik.' };
-      }
-      spelers[idx].email = emailLower;
-    }
-
-    if (updates.naam) {
-      const oudeNaam = spelers[idx].naam;
-      const nieuweNaam = updates.naam.trim();
-      spelers[idx].naam = nieuweNaam;
-
-      // Update aanmeldingen met de oude naam
-      if (oudeNaam.toLowerCase() !== nieuweNaam.toLowerCase()) {
-        const aanm = load(AANMELDINGEN_KEY);
-        const oudeNaamLower = oudeNaam.toLowerCase();
-        aanm.forEach(a => {
-          if (a.spelerNaam.toLowerCase() === oudeNaamLower) {
-            a.spelerNaam = nieuweNaam;
-          }
-        });
-        save(AANMELDINGEN_KEY, aanm);
-      }
-    }
-
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
-    return { ok: true, speler: spelers[idx] };
-  }
-
-  /** Wijzig wachtwoord. */
-  async function wijzigWachtwoord(spelerId, oudWachtwoord, nieuwWachtwoord) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-
-    const oudeHash = await hash(oudWachtwoord);
-    if (oudeHash !== spelers[idx].wachtwoordHash) {
-      return { ok: false, error: 'Huidig wachtwoord is onjuist.' };
-    }
-
-    spelers[idx].wachtwoordHash = await hash(nieuwWachtwoord);
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
-    return { ok: true };
-  }
-
-  // â”€â”€ Sessie â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Sessie (blijft localStorage — per browser) ─
   function getSessie() {
-    try {
-      return JSON.parse(localStorage.getItem(SESSIE_KEY)) || null;
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(localStorage.getItem(SESSIE_KEY)) || null; }
+    catch { return null; }
   }
 
   function setSessie(speler) {
@@ -238,261 +46,297 @@ const DataStore = (() => {
     localStorage.removeItem(SESSIE_KEY);
   }
 
-  // â”€â”€ Wedstrijden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function getWedstrijden() {
-    return load(WEDSTRIJDEN_KEY).sort(
-      (a, b) => new Date(a.datum + 'T' + (a.tijdstip || '00:00')) -
-                new Date(b.datum + 'T' + (b.tijdstip || '00:00'))
-    );
+  // ── Spelers ───────────────────────────────────
+  async function getSpelers() {
+    const { data } = await sb.from('spelers').select('*').order('aangemaakt');
+    return data || [];
   }
 
-  function saveWedstrijden(list) {
-    save(WEDSTRIJDEN_KEY, list);
+  async function getSpelerById(id) {
+    const { data } = await sb.from('spelers').select('*').eq('id', id).maybeSingle();
+    return data || null;
   }
 
-  /**
-   * @param {{ tegenstander: string, datum: string, tijdstip: string, locatie: string, thuisUit: 'thuis'|'uit' }} w
-   */
-  function voegWedstrijdToe(w) {
-    const list = load(WEDSTRIJDEN_KEY);
-    const wedstrijd = {
-      id: uuid(),
-      tegenstander: w.tegenstander.trim(),
-      datum: w.datum,
-      tijdstip: w.tijdstip || '',
-      locatie: w.locatie.trim(),
-      thuisUit: w.thuisUit || 'thuis',
-      aangemaakt: new Date().toISOString(),
+  async function getSpelerByEmail(email) {
+    const e = email.trim().toLowerCase();
+    const { data } = await sb.from('spelers').select('*').eq('email', e).maybeSingle();
+    return data || null;
+  }
+
+  async function registreerSpeler({ naam, email, wachtwoord }) {
+    const emailLower = email.trim().toLowerCase();
+    const naamTrim = naam.trim();
+
+    const bestaand = await getSpelerByEmail(emailLower);
+    if (bestaand) return { ok: false, error: 'Er bestaat al een account met dit e-mailadres.' };
+
+    // Eerste speler wordt admin
+    const { count } = await sb.from('spelers').select('*', { count: 'exact', head: true });
+    const isEerste = (count || 0) === 0;
+
+    const code = genereerCode();
+    const speler = {
+      naam: naamTrim,
+      email: emailLower,
+      wachtwoord_hash: await hash(wachtwoord),
+      rol: isEerste ? 'admin' : 'speler',
+      geblokkeerd: false,
+      geverifieerd: false,
+      verificatie_code: code,
     };
-    list.push(wedstrijd);
-    save(WEDSTRIJDEN_KEY, list);
-    return wedstrijd;
+
+    const { data, error } = await sb.from('spelers').insert(speler).select().single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, speler: data, verificatieCode: code };
   }
 
-  function verwijderWedstrijd(id) {
-    const list = load(WEDSTRIJDEN_KEY).filter(w => w.id !== id);
-    save(WEDSTRIJDEN_KEY, list);
-    // Verwijder ook alle aanmeldingen voor deze wedstrijd
-    const aanm = load(AANMELDINGEN_KEY).filter(a => a.wedstrijdId !== id);
-    save(AANMELDINGEN_KEY, aanm);
+  async function verifieerEmail(spelerId, code) {
+    const speler = await getSpelerById(spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+    if (speler.verificatie_code !== code) return { ok: false, error: 'Ongeldige verificatiecode.' };
+
+    const { error } = await sb.from('spelers')
+      .update({ geverifieerd: true, verificatie_code: null })
+      .eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
-  // â”€â”€ Aanmeldingen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function getAanmeldingen(wedstrijdId) {
-    const all = load(AANMELDINGEN_KEY);
-    return wedstrijdId
-      ? all.filter(a => a.wedstrijdId === wedstrijdId)
-      : all;
+  async function genereerResetCode(email) {
+    const emailLower = email.trim().toLowerCase();
+    const speler = await getSpelerByEmail(emailLower);
+    if (!speler) return { ok: false, error: 'Geen account gevonden met dit e-mailadres.' };
+
+    const code = genereerCode();
+    const { error } = await sb.from('spelers').update({
+      reset_code: code,
+      reset_verloopt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+    }).eq('id', speler.id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, code, naam: speler.naam };
   }
 
-  /**
-   * Zet of wijzig aanmelding. Bij zelfde naam (case-insensitive) wordt de status overschreven.
-   * @param {string} wedstrijdId
-   * @param {string} spelerNaam
-   * @param {'aanwezig'|'misschien'|'afwezig'} status
-   */
-  function zetAanmelding(wedstrijdId, spelerNaam, status) {
-    const all = load(AANMELDINGEN_KEY);
-    const naam = spelerNaam.trim();
-    const naamLower = naam.toLowerCase();
-
-    const idx = all.findIndex(
-      a => a.wedstrijdId === wedstrijdId && a.spelerNaam.toLowerCase() === naamLower
-    );
-
-    if (idx >= 0) {
-      all[idx].status = status;
-      all[idx].spelerNaam = naam; // bewaar laatst ingevoerde casing
-      all[idx].gewijzigd = new Date().toISOString();
-    } else {
-      all.push({
-        wedstrijdId,
-        spelerNaam: naam,
-        status,
-        aangemeld: new Date().toISOString(),
-      });
+  async function resetWachtwoord(email, code, nieuwWachtwoord) {
+    const emailLower = email.trim().toLowerCase();
+    const speler = await getSpelerByEmail(emailLower);
+    if (!speler) return { ok: false, error: 'Geen account gevonden.' };
+    if (speler.reset_code !== code) return { ok: false, error: 'Ongeldige resetcode.' };
+    if (new Date(speler.reset_verloopt) < new Date()) {
+      return { ok: false, error: 'Resetcode is verlopen. Vraag een nieuwe aan.' };
     }
-    save(AANMELDINGEN_KEY, all);
+
+    const { error } = await sb.from('spelers').update({
+      wachtwoord_hash: await hash(nieuwWachtwoord),
+      reset_code: null,
+      reset_verloopt: null,
+      gewijzigd: new Date().toISOString(),
+    }).eq('id', speler.id);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
-  function verwijderAanmelding(wedstrijdId, spelerNaam) {
-    const all = load(AANMELDINGEN_KEY);
-    const naamLower = spelerNaam.trim().toLowerCase();
-    const filtered = all.filter(
-      a => !(a.wedstrijdId === wedstrijdId && a.spelerNaam.toLowerCase() === naamLower)
-    );
-    save(AANMELDINGEN_KEY, filtered);
+  async function loginSpeler(email, wachtwoord) {
+    const speler = await getSpelerByEmail(email);
+    if (!speler) return { ok: false, error: 'Geen account gevonden met dit e-mailadres.' };
+    if (speler.geblokkeerd) return { ok: false, error: 'Dit account is geblokkeerd. Neem contact op met de beheerder.' };
+    const h = await hash(wachtwoord);
+    if (h !== speler.wachtwoord_hash) return { ok: false, error: 'Wachtwoord is onjuist.' };
+    return { ok: true, speler };
   }
 
-  // ── Admin functies ────────────────────────────
-  function isAdmin(spelerId) {
-    const speler = getSpelerById(spelerId);
+  async function updateProfiel(spelerId, updates) {
+    const speler = await getSpelerById(spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+
+    const patch = { gewijzigd: new Date().toISOString() };
+
+    if (updates.email) {
+      const emailLower = updates.email.trim().toLowerCase();
+      const bestaand = await getSpelerByEmail(emailLower);
+      if (bestaand && bestaand.id !== spelerId) {
+        return { ok: false, error: 'Dit e-mailadres is al in gebruik.' };
+      }
+      patch.email = emailLower;
+    }
+
+    if (updates.naam) {
+      const oudeNaam = speler.naam;
+      const nieuweNaam = updates.naam.trim();
+      patch.naam = nieuweNaam;
+
+      if (oudeNaam.toLowerCase() !== nieuweNaam.toLowerCase()) {
+        await sb.from('aanmeldingen')
+          .update({ speler_naam: nieuweNaam })
+          .ilike('speler_naam', oudeNaam);
+      }
+    }
+
+    const { data, error } = await sb.from('spelers').update(patch).eq('id', spelerId).select().single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, speler: data };
+  }
+
+  async function wijzigWachtwoord(spelerId, oudWachtwoord, nieuwWachtwoord) {
+    const speler = await getSpelerById(spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+    const oudeHash = await hash(oudWachtwoord);
+    if (oudeHash !== speler.wachtwoord_hash) return { ok: false, error: 'Huidig wachtwoord is onjuist.' };
+
+    const { error } = await sb.from('spelers').update({
+      wachtwoord_hash: await hash(nieuwWachtwoord),
+      gewijzigd: new Date().toISOString(),
+    }).eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  // ── Admin ─────────────────────────────────────
+  async function isAdmin(spelerId) {
+    const speler = await getSpelerById(spelerId);
     return speler?.rol === 'admin';
   }
 
-  function blokkeerSpeler(spelerId) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-    if (spelers[idx].rol === 'admin') return { ok: false, error: 'Een admin kan niet geblokkeerd worden.' };
-    spelers[idx].geblokkeerd = true;
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
+  async function blokkeerSpeler(spelerId) {
+    const speler = await getSpelerById(spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+    if (speler.rol === 'admin') return { ok: false, error: 'Een admin kan niet geblokkeerd worden.' };
+    const { error } = await sb.from('spelers').update({ geblokkeerd: true, gewijzigd: new Date().toISOString() }).eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
-  function deblokkeerSpeler(spelerId) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-    spelers[idx].geblokkeerd = false;
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
+  async function deblokkeerSpeler(spelerId) {
+    const { error } = await sb.from('spelers').update({ geblokkeerd: false, gewijzigd: new Date().toISOString() }).eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
-  function verwijderSpeler(spelerId) {
-    const spelers = load(SPELERS_KEY);
-    const speler = spelers.find(s => s.id === spelerId);
+  async function verwijderSpeler(spelerId) {
+    const speler = await getSpelerById(spelerId);
     if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
     if (speler.rol === 'admin') return { ok: false, error: 'Een admin kan niet verwijderd worden.' };
 
-    // Verwijder de speler
-    const nieuw = spelers.filter(s => s.id !== spelerId);
-    save(SPELERS_KEY, nieuw);
-
-    // Verwijder alle aanmeldingen van deze speler
-    const aanm = load(AANMELDINGEN_KEY);
-    const naamLower = speler.naam.toLowerCase();
-    save(AANMELDINGEN_KEY, aanm.filter(a => a.spelerNaam.toLowerCase() !== naamLower));
-
+    // Verwijder aanmeldingen
+    await sb.from('aanmeldingen').delete().ilike('speler_naam', speler.naam);
+    // Verwijder speler
+    const { error } = await sb.from('spelers').delete().eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
-  function adminUpdateSpeler(spelerId, updates) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+  async function adminUpdateSpeler(spelerId, updates) {
+    const speler = await getSpelerById(spelerId);
+    if (!speler) return { ok: false, error: 'Speler niet gevonden.' };
+
+    const patch = { gewijzigd: new Date().toISOString() };
 
     if (updates.naam !== undefined) {
-      const oudeNaam = spelers[idx].naam;
       const nieuweNaam = updates.naam.trim();
-      if (nieuweNaam && oudeNaam.toLowerCase() !== nieuweNaam.toLowerCase()) {
-        const aanm = load(AANMELDINGEN_KEY);
-        aanm.forEach(a => {
-          if (a.spelerNaam.toLowerCase() === oudeNaam.toLowerCase()) {
-            a.spelerNaam = nieuweNaam;
-          }
-        });
-        save(AANMELDINGEN_KEY, aanm);
+      if (nieuweNaam && speler.naam.toLowerCase() !== nieuweNaam.toLowerCase()) {
+        await sb.from('aanmeldingen')
+          .update({ speler_naam: nieuweNaam })
+          .ilike('speler_naam', speler.naam);
       }
-      spelers[idx].naam = nieuweNaam || spelers[idx].naam;
+      patch.naam = nieuweNaam || speler.naam;
     }
 
     if (updates.email !== undefined) {
       const emailLower = updates.email.trim().toLowerCase();
-      if (emailLower && spelers.some(s => s.email === emailLower && s.id !== spelerId)) {
-        return { ok: false, error: 'Dit e-mailadres is al in gebruik.' };
+      if (emailLower) {
+        const bestaand = await getSpelerByEmail(emailLower);
+        if (bestaand && bestaand.id !== spelerId) {
+          return { ok: false, error: 'Dit e-mailadres is al in gebruik.' };
+        }
+        patch.email = emailLower;
       }
-      spelers[idx].email = emailLower || spelers[idx].email;
     }
 
-    spelers[idx].gewijzigd = new Date().toISOString();
-    save(SPELERS_KEY, spelers);
-    return { ok: true, speler: spelers[idx] };
+    const { data, error } = await sb.from('spelers').update(patch).eq('id', spelerId).select().single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, speler: data };
   }
 
-  function maakAdmin(spelerId) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
-    spelers[idx].rol = 'admin';
-    save(SPELERS_KEY, spelers);
+  async function maakAdmin(spelerId) {
+    const { error } = await sb.from('spelers').update({ rol: 'admin' }).eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
-  function verwijderAdmin(spelerId) {
-    const spelers = load(SPELERS_KEY);
-    const idx = spelers.findIndex(s => s.id === spelerId);
-    if (idx < 0) return { ok: false, error: 'Speler niet gevonden.' };
+  async function verwijderAdmin(spelerId) {
+    const spelers = await getSpelers();
     const admins = spelers.filter(s => s.rol === 'admin');
     if (admins.length <= 1) return { ok: false, error: 'Er moet minimaal één admin blijven.' };
-    spelers[idx].rol = 'speler';
-    save(SPELERS_KEY, spelers);
+    const { error } = await sb.from('spelers').update({ rol: 'speler' }).eq('id', spelerId);
+    if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
-  // â”€â”€ Seed Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  function seedAlsLeeg() {
-    if (load(WEDSTRIJDEN_KEY).length > 0) return;
-
-    // Facta wedstrijden â€” seizoen 2025/2026 (bron: asvdzaal.nl)
-    const seeds = [
-      {
-        tegenstander: 'Schildersbedrijf Flevo Kleur',
-        datum: '2026-04-14',
-        tijdstip: '19:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'thuis',
-      },
-      {
-        tegenstander: 'ZAM Sierbestrating & Tuinhout',
-        datum: '2026-05-01',
-        tijdstip: '20:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'thuis',
-      },
-      {
-        tegenstander: 'Suidgeest Caravanstalling',
-        datum: '2026-05-08',
-        tijdstip: '22:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'uit',
-      },
-      {
-        tegenstander: 'Classic V',
-        datum: '2026-06-05',
-        tijdstip: '19:00',
-        locatie: "'t Dok: Hal 1",
-        thuisUit: 'uit',
-      },
-      {
-        tegenstander: 'Wilkens & Partners',
-        datum: '2026-06-15',
-        tijdstip: '20:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'uit',
-      },
-      {
-        tegenstander: 'TMO events',
-        datum: '2026-06-26',
-        tijdstip: '22:00',
-        locatie: "'t Dok: Hal 1",
-        thuisUit: 'thuis',
-      },
-      {
-        tegenstander: 'Speerstra',
-        datum: '2026-07-03',
-        tijdstip: '21:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'uit',
-      },
-      {
-        tegenstander: 'Schildersbedrijf Flevo Kleur',
-        datum: '2026-07-06',
-        tijdstip: '20:00',
-        locatie: "'t Dok: Hal 2",
-        thuisUit: 'uit',
-      },
-    ];
-
-    seeds.forEach(s => voegWedstrijdToe(s));
+  // ── Wedstrijden ───────────────────────────────
+  async function getWedstrijden() {
+    const { data } = await sb.from('wedstrijden').select('*').order('datum').order('tijdstip');
+    return data || [];
   }
 
-  // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async function voegWedstrijdToe(w) {
+    const { data, error } = await sb.from('wedstrijden').insert({
+      tegenstander: w.tegenstander.trim(),
+      datum: w.datum,
+      tijdstip: w.tijdstip || '',
+      locatie: (w.locatie || '').trim(),
+      thuis_uit: w.thuisUit || 'thuis',
+    }).select().single();
+    if (error) return null;
+    return data;
+  }
+
+  async function verwijderWedstrijd(id) {
+    // Aanmeldingen worden automatisch verwijderd door ON DELETE CASCADE
+    await sb.from('wedstrijden').delete().eq('id', id);
+  }
+
+  // ── Aanmeldingen ──────────────────────────────
+  async function getAanmeldingen(wedstrijdId) {
+    let query = sb.from('aanmeldingen').select('*');
+    if (wedstrijdId) query = query.eq('wedstrijd_id', wedstrijdId);
+    const { data } = await query.order('aangemeld');
+    // Map DB column names to camelCase for compatibility
+    return (data || []).map(a => ({
+      id: a.id,
+      wedstrijdId: a.wedstrijd_id,
+      spelerNaam: a.speler_naam,
+      status: a.status,
+      aangemeld: a.aangemeld,
+      gewijzigd: a.gewijzigd,
+    }));
+  }
+
+  async function zetAanmelding(wedstrijdId, spelerNaam, status) {
+    const naam = spelerNaam.trim();
+    // Upsert: gebruik de UNIQUE constraint op (wedstrijd_id, speler_naam)
+    const { error } = await sb.from('aanmeldingen').upsert({
+      wedstrijd_id: wedstrijdId,
+      speler_naam: naam,
+      status,
+      gewijzigd: new Date().toISOString(),
+    }, { onConflict: 'wedstrijd_id,speler_naam' });
+    if (error) console.error('zetAanmelding error:', error);
+  }
+
+  async function verwijderAanmelding(wedstrijdId, spelerNaam) {
+    await sb.from('aanmeldingen').delete()
+      .eq('wedstrijd_id', wedstrijdId)
+      .ilike('speler_naam', spelerNaam.trim());
+  }
+
+  // ── Seed (no-op: seed data is in SQL migration) ──
+  async function seedAlsLeeg() {
+    // Wedstrijden worden aangemaakt via de SQL setup.
+    // Deze functie bestaat voor backward compatibility.
+  }
+
+  // ── Public API ────────────────────────────────
   return {
     getWedstrijden,
-    saveWedstrijden,
     voegWedstrijdToe,
     verwijderWedstrijd,
     getAanmeldingen,

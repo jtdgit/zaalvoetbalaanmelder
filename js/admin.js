@@ -8,16 +8,16 @@ const Admin = (() => {
   let currentAdmin = null;
   let toastTimer = null;
 
-  function init() {
-    DataStore.seedAlsLeeg();
+  async function init() {
+    await DataStore.seedAlsLeeg();
     initDarkMode();
-    checkAccess();
+    await checkAccess();
   }
 
   // ── Access check ──────────────────────────────
-  function checkAccess() {
+  async function checkAccess() {
     const sessie = DataStore.getSessie();
-    if (!sessie || !DataStore.isAdmin(sessie.id)) {
+    if (!sessie || !(await DataStore.isAdmin(sessie.id))) {
       $('#noAccessOverlay').classList.remove('login-overlay--hidden');
       $('#adminMain').style.display = 'none';
       return;
@@ -26,7 +26,7 @@ const Admin = (() => {
     $('#noAccessOverlay').classList.add('login-overlay--hidden');
     $('#adminMain').style.display = '';
     bindEvents();
-    render();
+    await render();
   }
 
   // ── Dark mode ─────────────────────────────────
@@ -56,18 +56,18 @@ const Admin = (() => {
     $('#darkToggle').addEventListener('click', toggleDarkMode);
 
     // Delegate table actions
-    $('#userBody').addEventListener('click', e => {
+    $('#userBody').addEventListener('click', async e => {
       const btn = e.target.closest('.action-btn');
       if (!btn) return;
       const id = btn.dataset.id;
       const action = btn.dataset.action;
 
-      if (action === 'edit') openEdit(id);
-      if (action === 'block') handleBlock(id);
-      if (action === 'unblock') handleUnblock(id);
-      if (action === 'delete') handleDelete(id);
-      if (action === 'make-admin') handleMakeAdmin(id);
-      if (action === 'remove-admin') handleRemoveAdmin(id);
+      if (action === 'edit') await openEdit(id);
+      if (action === 'block') await handleBlock(id);
+      if (action === 'unblock') await handleUnblock(id);
+      if (action === 'delete') await handleDelete(id);
+      if (action === 'make-admin') await handleMakeAdmin(id);
+      if (action === 'remove-admin') await handleRemoveAdmin(id);
     });
 
     // Edit modal
@@ -79,8 +79,8 @@ const Admin = (() => {
   }
 
   // ── Render ────────────────────────────────────
-  function render() {
-    const spelers = DataStore.getSpelers();
+  async function render() {
+    const spelers = await DataStore.getSpelers();
 
     // Summary
     const actief = spelers.filter(s => !s.geblokkeerd).length;
@@ -159,57 +159,57 @@ const Admin = (() => {
   }
 
   // ── Handlers ──────────────────────────────────
-  function handleBlock(id) {
-    const speler = DataStore.getSpelerById(id);
+  async function handleBlock(id) {
+    const speler = await DataStore.getSpelerById(id);
     if (!speler) return;
     if (!confirm(`${speler.naam} blokkeren? Deze speler kan dan niet meer inloggen.`)) return;
-    const result = DataStore.blokkeerSpeler(id);
+    const result = await DataStore.blokkeerSpeler(id);
     if (!result.ok) { toast(result.error); return; }
-    render();
+    await render();
     toast(`${speler.naam} is geblokkeerd`);
   }
 
-  function handleUnblock(id) {
-    const result = DataStore.deblokkeerSpeler(id);
+  async function handleUnblock(id) {
+    const result = await DataStore.deblokkeerSpeler(id);
     if (!result.ok) { toast(result.error); return; }
-    const speler = DataStore.getSpelerById(id);
-    render();
+    const speler = await DataStore.getSpelerById(id);
+    await render();
     toast(`${speler?.naam || 'Speler'} is gedeblokkeerd`);
   }
 
-  function handleDelete(id) {
-    const speler = DataStore.getSpelerById(id);
+  async function handleDelete(id) {
+    const speler = await DataStore.getSpelerById(id);
     if (!speler) return;
     if (!confirm(`${speler.naam} definitief verwijderen?\nAlle aanmeldingen van deze speler worden ook verwijderd.`)) return;
-    const result = DataStore.verwijderSpeler(id);
+    const result = await DataStore.verwijderSpeler(id);
     if (!result.ok) { toast(result.error); return; }
-    render();
+    await render();
     toast(`${speler.naam} is verwijderd`);
   }
 
-  function handleMakeAdmin(id) {
-    const speler = DataStore.getSpelerById(id);
+  async function handleMakeAdmin(id) {
+    const speler = await DataStore.getSpelerById(id);
     if (!speler) return;
     if (!confirm(`${speler.naam} admin-rechten geven?`)) return;
-    const result = DataStore.maakAdmin(id);
+    const result = await DataStore.maakAdmin(id);
     if (!result.ok) { toast(result.error); return; }
-    render();
+    await render();
     toast(`${speler.naam} is nu admin`);
   }
 
-  function handleRemoveAdmin(id) {
-    const speler = DataStore.getSpelerById(id);
+  async function handleRemoveAdmin(id) {
+    const speler = await DataStore.getSpelerById(id);
     if (!speler) return;
     if (!confirm(`Admin-rechten van ${speler.naam} verwijderen?`)) return;
-    const result = DataStore.verwijderAdmin(id);
+    const result = await DataStore.verwijderAdmin(id);
     if (!result.ok) { toast(result.error); return; }
-    render();
+    await render();
     toast(`${speler.naam} is geen admin meer`);
   }
 
   // ── Edit modal ────────────────────────────────
-  function openEdit(id) {
-    const speler = DataStore.getSpelerById(id);
+  async function openEdit(id) {
+    const speler = await DataStore.getSpelerById(id);
     if (!speler) return;
     $('#editId').value = speler.id;
     $('#editNaam').value = speler.naam;
@@ -222,26 +222,25 @@ const Admin = (() => {
     $('#editOverlay').classList.add('modal-overlay--hidden');
   }
 
-  function handleEditSave(e) {
+  async function handleEditSave(e) {
     e.preventDefault();
     const id    = $('#editId').value;
     const naam  = $('#editNaam').value.trim();
     const email = $('#editEmail').value.trim();
 
-    const result = DataStore.adminUpdateSpeler(id, { naam, email });
+    const result = await DataStore.adminUpdateSpeler(id, { naam, email });
     if (!result.ok) {
       $('#editError').textContent = result.error;
       return;
     }
 
-    // Als de admin zichzelf bewerkt, sessie updaten
     if (id === currentAdmin.id) {
       DataStore.setSessie(result.speler);
       currentAdmin = DataStore.getSessie();
     }
 
     closeEdit();
-    render();
+    await render();
     toast(`${result.speler.naam} is bijgewerkt`);
   }
 
